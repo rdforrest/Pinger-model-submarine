@@ -1,0 +1,43 @@
+// July 24th 2019.
+// Battery life - only about 3 hours - needs more work
+// Feb 22nd. Now using toneAC for higher sound output
+// Uses 1 Hz output from DS3231 to an interrupt
+// 1 Hz output from DS3231 goes to Interrupt pin D2
+// +3.3v pin to + on DS3231
+// Transmit ultrasonic output on Digital pins 9,10 using push/pull on toneAC for increased output
+// CR2032 + goes to Vin pin
+// Future work to use sleep routine to reduce current
+// Draws about 16mA
+//#include <Sleep_n0m1.h>
+#include <toneAC.h> // Higher volume ultrasound using push-pull
+
+//Sleep sleep;
+//unsigned long sleepTime; //how long you want the arduino to sleep
+const byte interruptPin2 = 2;
+
+void setup ()
+{
+  pinMode(interruptPin2, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(interruptPin2), ultrapulse, RISING);
+
+
+  // sleepTime = 2000; //set sleep time in ms, max sleep time is 49.7 days
+
+}  // end of setup
+
+void loop ()
+{
+
+  //  ultrapulse();
+  // sleep.pwrDownMode(); //set sleep mode
+  // sleep.sleepDelay(sleepTime); //sleep for: sleepTime
+
+}
+
+//Ultrasonic pulse function
+//Transmit ultrasonic output on Pin 9,10 using push/pull on toneAC
+void ultrapulse() {
+  toneAC(40000);//Normally 40000
+  delay(20);
+  noToneAC();
+}
