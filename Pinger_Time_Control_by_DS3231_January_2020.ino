@@ -4,7 +4,7 @@
 // Uses 1 Hz output from DS3231 to interrupt Pin 2
 // +3.3v pin to + on DS3231
 // Transmit ultrasonic output on Digital pins 9,10 using push/pull on toneAC for increased output
-// CR2032 + goes to Vin pin
+// 2 x CR2032 + goes to Vin pin. Maybe not. Currently trying feed to 5v input.
 // Power saving comments:
 // Without sleep about 16mA max.
 // With sleep about 10mA max.
