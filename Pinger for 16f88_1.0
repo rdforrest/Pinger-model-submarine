@@ -1,0 +1,74 @@
+/*
+ June 2020. Pinger 3 - Ultrasonic and using DS3231 time source.
+ * This gives about a 1mS duration pulse (Loop counter at 50)
+ * Current draw 18 mA. Rather high (about the same as Arduino).
+ * Commenting out Sleep function gives 20mA
+ * Connecting Transducer current rises from 0 to 18mA.
+ * So no improvement over Arduino by using PICs?
+ 
+ */
+
+// PIC16F88 Configuration Bit Settings
+
+// 'C' source line config statements
+
+// CONFIG1
+#pragma config FOSC = INTOSCIO  // Oscillator Selection bits (INTRC oscillator; port I/O function on both RA6/OSC2/CLKO pin and RA7/OSC1/CLKI pin)
+#pragma config WDTE = OFF       // Watchdog Timer Enable bit (WDT disabled)
+#pragma config PWRTE = OFF      // Power-up Timer Enable bit (PWRT disabled)
+#pragma config MCLRE = OFF      // RA5/MCLR/VPP Pin Function Select bit (RA5/MCLR/VPP pin function is digital I/O, MCLR internally tied to VDD)
+#pragma config BOREN = OFF      // Brown-out Reset Enable bit (BOR disabled)
+#pragma config LVP = OFF        // Low-Voltage Programming Enable bit (RB3 is digital I/O, HV on MCLR must be used for programming)
+#pragma config CPD = OFF        // Data EE Memory Code Protection bit (Code protection off)
+#pragma config WRT = OFF        // Flash Program Memory Write Enable bits (Write protection off)
+#pragma config CCPMX = RB0      // CCP1 Pin Selection bit (CCP1 function on RB0)
+#pragma config CP = OFF         // Flash Program Memory Code Protection bit (Code protection off)
+
+// CONFIG2
+#pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable bit (Fail-Safe Clock Monitor disabled)
+#pragma config IESO = OFF       // Internal External Switchover bit (Internal External Switchover mode disabled)
+
+#include <xc.h>
+#define _XTAL_FREQ 8000000
+   
+int Countery =1;    //Global variables
+
+//Interrupt routine using input on GP2
+void __interrupt () timer_module  (void)
+{
+if(INTCONbits.INTE && INTCONbits.INTF) {
+Countery = 1;
+INTCONbits,INTF = 0;       // Clear Interrupt
+}
+}
+
+int main(void)
+{
+OPTION_REG,INTEDG; //External Interrupt on leading edge   
+OSCCON = 0b01110101;  //Internal Osc set to 8Mhz, Stable and also used as internal clock
+CMCON = 0b000000;    //all pins to digital mode
+ANSEL  =0b000000;   //all pins to digital mode
+TRISA = 0b000000;     // all outputs - for lowest current draw
+TRISB = 0b000001;    // configure RB1,RB2 as an output.RBO as input. 
+    
+while(1) // Go into infinite loop
+{ 
+ if( (Countery >= 1)&&(Countery < 50)) // 250  gives about 7mS pulse
+{
+ 
+PORTB = 0b000100;
+PORTB = 0b000010;
+
+Countery = (++Countery);    //Increment Counter
+}
+  
+else {
+PORTA = 0b000000;     
+SLEEP();
+}    
+
+INTCONbits,INTE = 1;       // Enable interrupt on GP2 - needed also to wake from sleep.
+ei();                      // Enable all interrupts    
+
+}   
+}
