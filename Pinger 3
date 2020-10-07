@@ -1,0 +1,104 @@
+/*
+ * Sept 2020. Pinger 3 - Ultrasonic and using DS3231 time source.
+ * This gives about a 3mS duration pulse (Loop counter at 100)
+ * July 2020. Now working with a 12FL501
+ * Uses 1 Hz output from DS3231 to interrupt pin RA2
+ * Output to ultrasonic transducer on RA0,RA1
+ * LED on RA4
+ * +3.3v pin to + on DS3231. (DS3231 uses 3.3 volts input.)
+ * Interrupt input from DS3231 has 4.7k ohm pull-up resistor connected to + 5 volts. 
+ * July 2020. Current draw about 0.4 to 1.4 mA with DS3231 on 5v without voltage divider resistors.
+ * July 2020. Current draw about 4.4 to 5 mA with DS3231 on 3.3v with voltage divider resistors of 1.4k ohmm total
+ * Current draw 0.5 to 0.7mA with 3.3v tapped off 3 x 4.7 k ohm resistors.
+ * Farnell formula: mAh ÷ mA * 0.7 = estimated hours
+ * CR2032 capacity is 225mAh which gives 32 hours at 5mA
+ * Jul 2020. Using 12FL501 low voltage PIC at 3v. Built in Weak Pull Ups don't seem to work with interrupt.
+ * So LED used instead.
+ * Current is about 0.1 to 0.4mA. Battery life about 7 days. Final cell voltage about 2.8v
+ * 15k ohm pull-up on RA2 interrupt works OK but now got weak pull-ups working.
+ * 3/8/2020 First wet trial at Barrow lake. Works well - very directional 
+ * and range about 20 feet using the simple frequency divider ultrasound detector.
+ * This is with silver transducer with an inductor wired in parallel.
+ * Long term battery trial started 3/8/2020- still working 20/8/2020
+ * Stopped working about 9/9/2020 at end voltage of 2.36 volts.
+ * 13/9/2020.Tested Pinger with waterproof Banngood ultrasonic transducer for receive and transmit. Range using 3v PIC is very low about 0.5m.
+ * Moving on to using 5v 12F683 PIC to increase range and perhaps drop clock module
+ * Using sensor from Banggood: Waterproof Ultrasonic Sensor Module Integrated Ranging Sensor Reversing Radar Measuring Distance. ID: 1369915
+ * Sept 2020. Pulse interval 1 second. Duration 5.7mS. Frequency 42Khz. 4v Peak.
+ * Sept 2020. Current draw from 2.7 to 0.2 mA on 5v.
+ * Oct 2020. 330 micro Henry inductors in series with transducer. Range increased. Current draw 1.5 to 0.5 mA.
+ * Oct 2020. Battery life 3+ days. Looking good.
+ */
+
+
+// PIC12F683 Configuration Bit Settings
+
+// 'C' source line config statements
+
+// CONFIG
+#pragma config FOSC = INTOSCIO  // Oscillator Selection bits (INTOSCIO oscillator: I/O function on RA4/OSC2/CLKOUT pin, I/O function on RA5/OSC1/CLKIN)
+#pragma config WDTE = OFF       // Watchdog Timer Enable bit (WDT disabled)
+#pragma config PWRTE = OFF      // Power-up Timer Enable bit (PWRT disabled)
+#pragma config MCLRE = OFF      // MCLR Pin Function Select bit (MCLR pin function is digital input, MCLR internally tied to VDD)
+#pragma config CP = OFF         // Code Protection bit (Program memory code protection is disabled)
+#pragma config CPD = OFF        // Data Code Protection bit (Data memory code protection is disabled)
+#pragma config BOREN = OFF      // Brown Out Detect (BOR disabled)
+#pragma config IESO = OFF       // Internal External Switchover bit (Internal External Switchover mode is disabled)
+#pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enabled bit (Fail-Safe Clock Monitor is disabled)
+
+// #pragma config statements should precede project file includes.
+// Use project enums instead of #define for ON and OFF.
+
+#include <xc.h>
+
+#define _XTAL_FREQ 8000000
+
+int Countery = 1;
+
+//Interrupt routine using input on RA2
+
+void __interrupt() timer_module(void) {
+    if (INTCONbits.INTE && INTCONbits.INTF) {
+        Countery = 1;
+        INTCONbits.INTF = 0; // Clear interrupt
+    }
+}
+
+int main(void) {
+    OSCCON = 0b01110101; //Internal Osc set to 8Mhz, Stable and also used as internal clock
+    CMCON1 = 0b000000; //all pins to digital mode
+    ANSEL = 0b000000; //all pins to digital mode
+    TRISIO = 0b000100; // configure RA0,RA1 as an output.RA2 as input. 
+    OPTION_REG = 0b1100000; //Weak Pull-ups and Interrupt on Leading Edge enabled
+    //WPUA, WPUA2; // set weak pull-up on RA2. Next formats also all work.
+    //WPUA = 0b000100;      // set weak pull-up on RA2.
+    //WPUAbits.WPUA2 = 1;  // set weak pull-up on RA2. 
+    //WPUA = 0x04;
+    WPUA, GP2; //set weak pull-up on RA2.
+
+    while (1) // Go into infinite loop
+    {
+        // Ultrasonic pulse   
+        if ((Countery >= 1)&&(Countery < 250)) // Should be 50. 250  gives about 7mS pulse
+        {
+
+            GPIO = 0b000001; // Ultrasonic pulse
+            __delay_us(12); // 12 seems like a good value
+            GPIO = 0b000010; // Ultrasonic pulse
+            __delay_us(12); // 12 seems like a good value
+            GPIObits.GP4 = 1; //Put LED on.
+            //LATA = !LATA; // Toggle LED
+            ++Countery; //Increment Counter
+        } else {
+            GPIO = 0b000000;
+            //LATA = !LATA; // Toggle LED
+            SLEEP();
+
+        }
+
+        INTCONbits, INTE = 1; // Enable interrupt on GP2 - needed also to wake from sleep.
+        ei(); // Enable all interrupts    
+
+    }
+}
+
